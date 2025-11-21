@@ -1,0 +1,31 @@
+{
+  "name": "streamlens",
+  "version": "1.0.0",
+  "description": "A block explorer meets npm for Data Streams schemas on Somnia",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "index": "ts-node src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "somnia",
+    "data-streams",
+    "schema",
+    "indexer"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@somnia-chain/streams": "^0.11.0",
+    "dotenv": "^17.2.3",
+    "viem": "^2.37.13"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.25",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
