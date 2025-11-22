@@ -7,18 +7,32 @@
 
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { Logger } from "../utils/logger";
+import { config } from "dotenv";
+
+config();
 
 const logger = new Logger("SupabaseConnection");
 
 // Database configuration from environment
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Validate required environment variables
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+if (!SUPABASE_URL) {
   throw new Error(
     "Missing required Supabase configuration. " +
-      "Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in your .env file."
+      "Please ensure NEXT_PUBLIC_SUPABASE_URL is set in your .env file."
+  );
+}
+
+// Use service role key for backend operations (bypasses RLS), fallback to anon key
+const SUPABASE_KEY = SUPABASE_SERVICE_KEY || SUPABASE_ANON_KEY;
+
+if (!SUPABASE_KEY) {
+  throw new Error(
+    "Missing required Supabase key. " +
+      "Please ensure either SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY is set in your .env file."
   );
 }
 
@@ -35,7 +49,7 @@ export function getSupabaseClient(): SupabaseClient {
   if (!supabaseClient) {
     logger.info("Initializing Supabase client...");
 
-    supabaseClient = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
+    supabaseClient = createClient(SUPABASE_URL!, SUPABASE_KEY!, {
       auth: {
         persistSession: false, // We don't need session persistence for server-side usage
         autoRefreshToken: false,
@@ -43,6 +57,11 @@ export function getSupabaseClient(): SupabaseClient {
     });
 
     logger.success("Supabase client initialized successfully");
+    if (SUPABASE_SERVICE_KEY) {
+      logger.info("Using service role key (RLS bypassed)");
+    } else {
+      logger.warn("Using anon key (RLS enforced - write operations may fail)");
+    }
   }
 
   return supabaseClient;

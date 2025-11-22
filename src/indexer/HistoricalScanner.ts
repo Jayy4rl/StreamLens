@@ -1,7 +1,7 @@
 import { PublicClient, Hex, parseAbi, Address } from "viem";
 import { createLogger } from "../utils/logger";
 import { retryWithBackoff, RateLimiter } from "../utils/retry";
-import { SchemaRepository } from "./SchemaRepository";
+import { ISchemaRepository } from "./ISchemaRepository";
 import { SchemaRegisteredEvent, IndexedSchema } from "../types/schema";
 
 const logger = createLogger("HistoricalScanner");
@@ -21,7 +21,7 @@ export class HistoricalScanner {
 
   constructor(
     private publicClient: PublicClient,
-    private repository: SchemaRepository,
+    private repository: ISchemaRepository,
     private contractAddress: Address,
     private batchSize: number = 1000
   ) {
@@ -65,7 +65,7 @@ export class HistoricalScanner {
         }
 
         // Update state after each batch
-        this.repository.updateState({
+        await this.repository.updateState({
           lastScannedBlock: toBlock,
           lastSyncTimestamp: Date.now(),
         });
@@ -140,9 +140,20 @@ export class HistoricalScanner {
     events: SchemaRegisteredEvent[]
   ): Promise<void> {
     const schemas: IndexedSchema[] = [];
+    const duplicateSchemaIds: Hex[] = [];
 
     for (const event of events) {
       try {
+        // Check if schema already exists (duplicate validation)
+        const existing = await this.repository.getSchema(event.schemaId);
+        if (existing) {
+          logger.info(
+            `⏭️  Skipping duplicate schema ${event.schemaId} from block ${event.blockNumber}`
+          );
+          duplicateSchemaIds.push(event.schemaId);
+          continue;
+        }
+
         // Get block to extract timestamp
         const block = await this.rateLimiter.execute(() =>
           retryWithBackoff(
@@ -181,9 +192,16 @@ export class HistoricalScanner {
       }
     }
 
-    // Batch save all schemas
+    // Batch save all new schemas
     if (schemas.length > 0) {
       await this.repository.saveSchemas(schemas);
+    }
+
+    // Log duplicate summary
+    if (duplicateSchemaIds.length > 0) {
+      logger.info(
+        `Skipped ${duplicateSchemaIds.length} duplicate schema(s) in this batch`
+      );
     }
   }
 
@@ -214,7 +232,7 @@ export class HistoricalScanner {
     progress: number;
     remaining: string;
   }> {
-    const state = this.repository.getState();
+    const state = await this.repository.getState();
     const currentBlock = await this.getCurrentBlock();
     const totalBlocks = currentBlock;
     const scanned = state.lastScannedBlock;

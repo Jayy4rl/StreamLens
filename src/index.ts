@@ -2,7 +2,7 @@ import * as dotenv from "dotenv";
 import { createPublicClient, http } from "viem";
 import { createLogger } from "./utils/logger";
 import { getChain, getStreamsContractAddress } from "./config/chains";
-import { SchemaRepository } from "./indexer/SchemaRepository";
+import { UnifiedSchemaRepository } from "./indexer/UnifiedSchemaRepository";
 import { HistoricalScanner } from "./indexer/HistoricalScanner";
 import { SchemaEnricher } from "./indexer/SchemaEnricher";
 import { IndexerConfig } from "./types/schema";
@@ -16,7 +16,7 @@ const logger = createLogger("Main");
  * Main indexer application
  */
 class StreamLensIndexer {
-  private repository: SchemaRepository;
+  private repository: UnifiedSchemaRepository;
   private scanner: HistoricalScanner;
   private enricher: SchemaEnricher;
   private config: IndexerConfig;
@@ -26,7 +26,7 @@ class StreamLensIndexer {
     this.config = this.loadConfig();
 
     // Initialize repository
-    this.repository = new SchemaRepository("./data");
+    this.repository = new UnifiedSchemaRepository("./data");
 
     // Create public client for blockchain interaction
     const publicClient = createPublicClient({
@@ -71,7 +71,7 @@ class StreamLensIndexer {
       network,
       rpcUrl,
       wsUrl,
-      startBlock: BigInt(process.env.START_BLOCK || "233873000"),
+      startBlock: BigInt(process.env.START_BLOCK || "234833000"),
       batchSize: parseInt(process.env.BATCH_SIZE || "1000"),
       contractAddress,
     };
@@ -94,9 +94,13 @@ class StreamLensIndexer {
     try {
       logger.info("🚀 Starting StreamLens Schema Indexer...");
       logger.info(`Network: ${this.config.network.toUpperCase()}`);
+      logger.info(`Storage: ${this.repository.getStorageType()}`);
+
+      // Initialize repository
+      await this.repository.initialize();
 
       // Display initial stats
-      this.displayStats();
+      await this.displayStats();
 
       // Step 1: Historical scan
       await this.runHistoricalScan();
@@ -110,7 +114,7 @@ class StreamLensIndexer {
       // Display final stats
       logger.info("");
       logger.success("✨ Indexing complete!");
-      this.displayStats();
+      await this.displayStats();
     } catch (error) {
       logger.error("Indexer failed", error);
       process.exit(1);
@@ -125,7 +129,7 @@ class StreamLensIndexer {
     logger.info("📜 Phase 1: Historical Scan");
     logger.info("━".repeat(50));
 
-    const state = this.repository.getState();
+    const state = await this.repository.getState();
     const startBlock =
       state.lastScannedBlock > 0n
         ? state.lastScannedBlock + 1n
@@ -167,8 +171,8 @@ class StreamLensIndexer {
   /**
    * Display current statistics
    */
-  private displayStats(): void {
-    const stats = this.repository.getStats();
+  private async displayStats(): Promise<void> {
+    const stats = await this.repository.getStats();
 
     logger.info("");
     logger.info("📊 Current Statistics");
@@ -184,8 +188,8 @@ class StreamLensIndexer {
   /**
    * Get a sample of indexed schemas
    */
-  getSampleSchemas(count: number = 5): void {
-    const schemas = this.repository.getAllSchemas().slice(0, count);
+  async getSampleSchemas(count: number = 5): Promise<void> {
+    const schemas = (await this.repository.getAllSchemas()).slice(0, count);
 
     if (schemas.length === 0) {
       logger.info("No schemas indexed yet");
@@ -232,7 +236,7 @@ async function main() {
     await indexer.start();
 
     // Display sample schemas
-    indexer.getSampleSchemas(10);
+    await indexer.getSampleSchemas(10);
   } catch (error) {
     logger.error("Fatal error", error);
     process.exit(1);

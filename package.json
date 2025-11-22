@@ -9,7 +9,9 @@
     "dev": "ts-node src/index.ts",
     "index": "ts-node src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "test:db": "ts-node src/database/testConnection.ts"
+    "test:db": "ts-node src/database/testConnection.ts",
+    "diagnose": "ts-node src/diagnostics.ts",
+    "deploy:schema": "ts-node src/scripts/deploy-schema.ts"
   },
   "keywords": [
     "somnia",
@@ -22,7 +24,9 @@
   "dependencies": {
     "@somnia-chain/streams": "^0.11.0",
     "@supabase/supabase-js": "^2.84.0",
+    "@types/pg": "^8.15.6",
     "dotenv": "^17.2.3",
+    "pg": "^8.16.3",
     "viem": "^2.37.13"
   },
   "devDependencies": {

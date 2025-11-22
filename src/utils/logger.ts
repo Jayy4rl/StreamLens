@@ -10,7 +10,13 @@ export class Logger {
 
   private formatMessage(level: string, message: string, data?: any): string {
     const timestamp = new Date().toISOString();
-    const dataStr = data ? ` ${JSON.stringify(data, null, 2)}` : "";
+    const dataStr = data
+      ? ` ${JSON.stringify(
+          data,
+          (_, value) => (typeof value === "bigint" ? value.toString() : value),
+          2
+        )}`
+      : "";
     return `[${timestamp}] [${level}] [${this.context}] ${message}${dataStr}`;
   }
 

@@ -2,7 +2,7 @@ import { SDK } from "@somnia-chain/streams";
 import { PublicClient, Hex, Address } from "viem";
 import { createLogger } from "../utils/logger";
 import { retryWithBackoff, RateLimiter } from "../utils/retry";
-import { SchemaRepository } from "./SchemaRepository";
+import { ISchemaRepository } from "./ISchemaRepository";
 import { IndexedSchema } from "../types/schema";
 
 const logger = createLogger("SchemaEnricher");
@@ -16,7 +16,7 @@ export class SchemaEnricher {
 
   constructor(
     private publicClient: PublicClient,
-    private repository: SchemaRepository
+    private repository: ISchemaRepository
   ) {
     // Initialize SDK with public client only (read-only)
     this.sdk = new SDK({
@@ -31,9 +31,9 @@ export class SchemaEnricher {
    * Enrich all schemas that are missing metadata
    */
   async enrichAllSchemas(): Promise<void> {
-    const schemas = this.repository.getAllSchemas();
+    const schemas = await this.repository.getAllSchemas();
     const schemasToEnrich = schemas.filter(
-      (schema) => !schema.schemaName || !schema.schemaDefinition
+      (schema: IndexedSchema) => !schema.schemaName || !schema.schemaDefinition
     );
 
     if (schemasToEnrich.length === 0) {
@@ -219,7 +219,7 @@ export class SchemaEnricher {
   }
 
   /**
-   * Verify all schemas using SDK's getAllSchemas
+   * Verify all schemas using SDK's getAllSchemas and backfill missing ones
    */
   async verifySchemasWithSDK(): Promise<void> {
     try {
@@ -238,8 +238,10 @@ export class SchemaEnricher {
       const sdkSchemas = result as string[];
       logger.info(`SDK reports ${sdkSchemas.length} public schemas`);
 
+      // Track missing schemas for backfill
+      const missingSchemas: Array<{ id: Hex; definition: string }> = [];
+
       // For each SDK schema, compute its ID and check if we have it
-      let missing = 0;
       for (const schemaStr of sdkSchemas) {
         const schemaIdResult = await this.sdk.streams.computeSchemaId(
           schemaStr
@@ -247,26 +249,72 @@ export class SchemaEnricher {
 
         if (!(schemaIdResult instanceof Error)) {
           const schemaId = schemaIdResult as Hex;
-          const existing = this.repository.getSchema(schemaId);
+          const existing = await this.repository.getSchema(schemaId);
 
           if (!existing) {
             logger.warn(
               `Schema ${schemaId} exists in SDK but not in our index!`
             );
-            missing++;
-
-            // Could optionally add it here with minimal data
-            // This would catch any schemas we might have missed
+            missingSchemas.push({ id: schemaId, definition: schemaStr });
           }
         }
       }
 
-      if (missing > 0) {
-        logger.warn(
-          `Found ${missing} schemas in SDK that are missing from our index`
+      // Backfill missing schemas
+      if (missingSchemas.length > 0) {
+        logger.info(
+          `🔄 Backfilling ${missingSchemas.length} missing schemas...`
+        );
+
+        let backfilled = 0;
+        let skipped = 0;
+
+        for (const { id, definition } of missingSchemas) {
+          try {
+            // Check again to avoid race conditions (duplicate check)
+            const existing = await this.repository.getSchema(id);
+            if (existing) {
+              logger.info(`⏭️  Skipping ${id} - already exists (duplicate)`);
+              skipped++;
+              continue;
+            }
+
+            // Fetch schema name using existing method
+            const schemaName = await this.fetchSchemaName(id);
+
+            // Create minimal indexed schema - will be enriched in enrichment phase
+            const schema: IndexedSchema = {
+              schemaId: id,
+              schemaName: schemaName || id,
+              schemaDefinition: definition,
+              publisherAddress: "0x0000000000000000000000000000000000000000" as Address, // Unknown - registered before scan
+              blockNumber: 0n, // Unknown - registered before our scan start block
+              timestamp: 0, // Unknown
+              transactionHash: "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex, // Unknown
+              isPublic: true, // From getAllSchemas, so it's public
+              metadata: {
+                description:
+                  "Backfilled from SDK (registered before indexer start block)",
+              },
+            };
+
+            // Save to repository (uses upsert in Supabase, so safe if duplicate)
+            await this.repository.saveSchema(schema);
+            logger.success(`✅ Backfilled schema: ${schemaName || id}`);
+            backfilled++;
+
+            // Rate limiting to avoid overwhelming the SDK
+            await this.sleep(200);
+          } catch (error) {
+            logger.error(`Failed to backfill schema ${id}`, error);
+          }
+        }
+
+        logger.success(
+          `Backfill complete: ${backfilled} added, ${skipped} skipped (duplicates)`
         );
       } else {
-        logger.success("All SDK schemas are indexed!");
+        logger.success("✅ All SDK schemas are already indexed!");
       }
     } catch (error) {
       logger.error("Failed to verify schemas with SDK", error);
