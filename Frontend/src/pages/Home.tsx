@@ -7,6 +7,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { getDataStreams, getPlatformStats } from "../services/api";
 import type { DataStream, PlatformStats } from "../types/schema";
+import StreamDetailsModal from "../components/StreamDetailsModal";
+import StreamCard from "../components/StreamCard";
 
 const Home: React.FC = () => {
   const [dataStreams, setDataStreams] = useState<DataStream[]>([]);
@@ -16,6 +18,10 @@ const Home: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+  const [selectedStream, setSelectedStream] = useState<DataStream | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Fetch data on mount and when sort changes
   const fetchData = useCallback(async () => {
@@ -43,20 +49,69 @@ const Home: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
-  // Filter streams based on search
-  useEffect(() => {
-    if (searchTerm) {
-      const filtered = dataStreams.filter(
-        (stream) =>
-          stream.schemaName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          stream.publisherAddress.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          stream.schemaId.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredStreams(filtered);
-    } else {
+  // Enhanced search functionality
+  const handleSearch = useCallback(() => {
+    if (!searchTerm.trim()) {
       setFilteredStreams(dataStreams);
+      setIsSearching(false);
+      setViewMode("table");
+      return;
     }
+
+    const searchLower = searchTerm.toLowerCase();
+    const filtered = dataStreams.filter((stream) => {
+      // Search in basic fields
+      const matchesBasic =
+        stream.schemaName.toLowerCase().includes(searchLower) ||
+        stream.publisherAddress.toLowerCase().includes(searchLower) ||
+        stream.schemaId.toLowerCase().includes(searchLower) ||
+        stream.transactionHash.toLowerCase().includes(searchLower);
+
+      // Search in metadata
+      const matchesTags =
+        stream.metadata?.tags?.some((tag) => tag.toLowerCase().includes(searchLower)) || false;
+      const matchesDescription =
+        stream.metadata?.description?.toLowerCase().includes(searchLower) || false;
+
+      return matchesBasic || matchesTags || matchesDescription;
+    });
+
+    setFilteredStreams(filtered);
+    setIsSearching(true);
+    setViewMode("cards");
   }, [searchTerm, dataStreams]);
+
+  // Auto-search on input change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleSearch();
+    }, 300); // Debounce search
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, handleSearch]);
+
+  // Sort filtered streams
+  const sortedStreams = [...filteredStreams].sort((a, b) => {
+    if (sortBy === "recent") {
+      return b.timestamp - a.timestamp;
+    } else {
+      // Sort by popularity (usage count)
+      const usageA = a.metadata?.usageCount || 0;
+      const usageB = b.metadata?.usageCount || 0;
+      return usageB - usageA;
+    }
+  });
+
+  // Handle stream click
+  const handleStreamClick = (stream: DataStream) => {
+    setSelectedStream(stream);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setTimeout(() => setSelectedStream(null), 300);
+  };
 
   const formatAddress = (address: string): string => {
     if (address.length <= 10) return address;
@@ -107,28 +162,42 @@ const Home: React.FC = () => {
             </nav>
           </div>
           <div className="flex items-center gap-4">
-            <div className="hidden md:flex bg-gray-900 rounded px-3 py-2 gap-2 items-center">
-              <svg
-                className="w-4 h-4 text-gray-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            <div className="hidden md:flex bg-gray-900 rounded items-center overflow-hidden">
+              <div className="flex items-center gap-2 px-3 py-2">
+                <svg
+                  className="w-4 h-4 text-gray-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Search schemas and publishers"
+                  className="bg-transparent text-xs outline-none w-48 placeholder-gray-600"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleSearch();
+                    }
+                  }}
                 />
-              </svg>
-              <input
-                type="text"
-                placeholder="Search schemas and publishers"
-                className="bg-transparent text-xs outline-none w-48 placeholder-gray-600"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <kbd className="text-xs text-gray-600">⌘ K</kbd>
+                <kbd className="text-xs text-gray-600">⌘ K</kbd>
+              </div>
+              <button
+                onClick={handleSearch}
+                className="bg-orange-400 text-black px-4 py-2 font-bold text-xs hover:bg-orange-500 transition h-full"
+                aria-label="Search"
+              >
+                SEARCH
+              </button>
             </div>
             <button className="bg-orange-400 text-black px-4 py-2 rounded font-bold text-sm hover:bg-orange-500 transition">
               CONNECT WALLET
@@ -251,37 +320,134 @@ const Home: React.FC = () => {
 
         {/* Main Content */}
         <main className="flex-1 p-6 bg-black">
+          {/* Search Results Header */}
+          {isSearching && (
+            <div className="mb-6 bg-gray-950 border border-gray-800 rounded-lg p-4">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                  <div>
+                    <div className="text-sm font-bold">
+                      Search Results for "{searchTerm}"
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Found {sortedStreams.length} stream{sortedStreams.length !== 1 ? "s" : ""}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setSearchTerm("");
+                    setIsSearching(false);
+                    setViewMode("table");
+                  }}
+                  className="text-xs text-orange-400 hover:text-orange-300 font-bold flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  CLEAR SEARCH
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Trending Section */}
           <div className="mb-12">
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-                />
-              </svg>
-              {sortBy === "popular" ? "Most Popular Data Streams" : "Recent Data Streams"}
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                  />
+                </svg>
+                {isSearching
+                  ? "Search Results"
+                  : sortBy === "popular"
+                  ? "Most Popular Data Streams"
+                  : "Recent Data Streams"}
+              </h2>
+              
+              {/* View Toggle */}
+              <div className="flex items-center gap-2 bg-gray-900 rounded p-1">
+                <button
+                  onClick={() => setViewMode("table")}
+                  className={`px-3 py-1 rounded text-xs font-bold transition ${
+                    viewMode === "table"
+                      ? "bg-orange-400 text-black"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                  aria-label="Table view"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 6h16M4 10h16M4 14h16M4 18h16"
+                    />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setViewMode("cards")}
+                  className={`px-3 py-1 rounded text-xs font-bold transition ${
+                    viewMode === "cards"
+                      ? "bg-orange-400 text-black"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                  aria-label="Card view"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
 
             {loading ? (
               <div className="flex items-center justify-center py-20">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-400"></div>
               </div>
-            ) : filteredStreams.length === 0 ? (
+            ) : sortedStreams.length === 0 ? (
               <div className="text-center py-20 text-gray-500">
                 <p className="text-lg mb-2">No data streams found</p>
                 <p className="text-sm">
                   {searchTerm ? "Try adjusting your search" : "Start by running the indexer"}
                 </p>
               </div>
+            ) : viewMode === "cards" ? (
+              /* Card View */
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {sortedStreams.map((stream) => (
+                  <StreamCard
+                    key={stream.schemaId}
+                    stream={stream}
+                    onClick={() => handleStreamClick(stream)}
+                  />
+                ))}
+              </div>
             ) : (
+              /* Table View */
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
@@ -295,9 +461,10 @@ const Home: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredStreams.map((stream) => (
+                    {sortedStreams.map((stream) => (
                       <tr
                         key={stream.schemaId}
+                        onClick={() => handleStreamClick(stream)}
                         className="border-b border-gray-900 hover:bg-gray-900 transition cursor-pointer"
                       >
                         <td className="py-3 px-4">
@@ -360,6 +527,15 @@ const Home: React.FC = () => {
           <span>StreamLens © 2025</span>
         </div>
       </footer>
+
+      {/* Stream Details Modal */}
+      {selectedStream && (
+        <StreamDetailsModal
+          stream={selectedStream}
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+        />
+      )}
     </div>
   );
 };
