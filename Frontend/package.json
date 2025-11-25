@@ -10,10 +10,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@somnia-chain/streams": "^0.11.0",
+    "@tanstack/react-query": "^5.90.11",
+    "@walletconnect/ethereum-provider": "^2.23.0",
+    "@web3modal/wagmi": "^5.1.11",
     "axios": "^1.13.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-router-dom": "^7.9.6"
+    "react-router-dom": "^7.9.6",
+    "viem": "^2.37.13",
+    "wagmi": "^2.12.16"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

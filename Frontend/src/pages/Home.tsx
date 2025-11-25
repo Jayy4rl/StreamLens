@@ -9,6 +9,10 @@ import { getDataStreams, getPlatformStats } from "../services/api";
 import type { DataStream, PlatformStats } from "../types/schema";
 import StreamDetailsModal from "../components/StreamDetailsModal";
 import StreamCard from "../components/StreamCard";
+import AppHeader from "../components/AppHeader";
+import NetworkStatus from "../components/NetworkStatus";
+import Alert from "../components/Alert";
+import { parseApiError, logError } from "../utils/errorHandling";
 
 const Home: React.FC = () => {
   const [dataStreams, setDataStreams] = useState<DataStream[]>([]);
@@ -38,8 +42,9 @@ const Home: React.FC = () => {
       setFilteredStreams(streamsData);
       setStats(statsData);
     } catch (err) {
-      console.error("Failed to fetch data:", err);
-      setError("Failed to connect to StreamLens backend. Please ensure the API server is running.");
+      logError(err, "Home.fetchData");
+      const errorDetails = parseApiError(err);
+      setError(errorDetails.message);
     } finally {
       setLoading(false);
     }
@@ -143,102 +148,74 @@ const Home: React.FC = () => {
   return (
     <div className="min-h-screen bg-black text-white font-mono">
       {/* Header */}
-      <header className="border-b border-gray-800 bg-black sticky top-0 z-50">
-        <div className="px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <a href="/" className="text-2xl font-bold text-orange-400">
-              STREAMLENS
-            </a>
-            <nav className="hidden lg:flex gap-6 text-sm">
-              <a href="/" className="text-orange-400">
-                HOME
-              </a>
-              <a href="/activity" className="hover:text-orange-400 transition">
-                ACTIVITY
-              </a>
-              <a href="#" className="hover:text-orange-400 transition">
-                CREATE
-              </a>
-            </nav>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex bg-gray-900 rounded items-center overflow-hidden">
-              <div className="flex items-center gap-2 px-3 py-2">
-                <svg
-                  className="w-4 h-4 text-gray-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-                <input
-                  type="text"
-                  placeholder="Search schemas and publishers"
-                  className="bg-transparent text-xs outline-none w-48 placeholder-gray-600"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleSearch();
-                    }
-                  }}
-                />
-                <kbd className="text-xs text-gray-600">⌘ K</kbd>
-              </div>
-              <button
-                onClick={handleSearch}
-                className="bg-orange-400 text-black px-4 py-2 font-bold text-xs hover:bg-orange-500 transition h-full"
-                aria-label="Search"
-              >
-                SEARCH
-              </button>
-            </div>
-            <button className="bg-orange-400 text-black px-4 py-2 rounded font-bold text-sm hover:bg-orange-500 transition">
-              CONNECT WALLET
-            </button>
-          </div>
-        </div>
-      </header>
+      <AppHeader currentPage="home" />
 
       {/* Network Status Banner */}
       {stats && (
-        <div
-          className={`${
-            stats.isHealthy ? "bg-green-950 border-green-900" : "bg-red-950 border-red-900"
-          } border-b px-6 py-3 flex items-center gap-2 text-sm`}
-        >
-          <div
-            className={`w-2 h-2 ${
-              stats.isHealthy ? "bg-green-400" : "bg-red-400"
-            } rounded-full shrink-0`}
-          ></div>
-          <span>
-            {stats.isHealthy
-              ? `Connected to Somnia ${stats.network} - ${stats.totalSchemas} schemas indexed`
-              : "Indexer offline - data may be stale"}
-          </span>
-        </div>
+        <NetworkStatus
+          isHealthy={stats.isHealthy}
+          network={stats.network}
+          totalSchemas={stats.totalSchemas}
+          lastSyncTimestamp={stats.lastSyncTimestamp}
+        />
       )}
 
       {/* Error Banner */}
       {error && (
-        <div className="bg-red-950 border-b border-red-900 px-6 py-3 flex items-center gap-2 text-sm">
-          <div className="w-2 h-2 bg-red-400 rounded-full shrink-0"></div>
-          <span>{error}</span>
-          <button
-            onClick={fetchData}
-            className="ml-auto text-orange-400 hover:text-orange-300 font-bold"
-          >
-            RETRY
-          </button>
+        <div className="px-6 py-4">
+          <Alert
+            type="error"
+            message={error}
+            onClose={() => setError(null)}
+            action={{
+              label: "RETRY",
+              onClick: fetchData,
+            }}
+          />
         </div>
       )}
+
+      {/* Search Bar - Mobile/Desktop */}
+      <div className="border-b border-gray-800 px-6 py-4 bg-gray-950">
+        <div className="max-w-2xl">
+          <div className="flex bg-gray-900 rounded items-center overflow-hidden">
+            <div className="flex items-center gap-2 px-3 py-2 flex-1">
+              <svg
+                className="w-4 h-4 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search schemas and publishers..."
+                className="bg-transparent text-sm outline-none flex-1 placeholder-gray-600"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSearch();
+                  }
+                }}
+              />
+            </div>
+            <button
+              onClick={handleSearch}
+              className="bg-orange-400 text-black px-6 py-2 font-bold text-sm hover:bg-orange-500 transition"
+              aria-label="Search"
+            >
+              SEARCH
+            </button>
+          </div>
+        </div>
+      </div>
 
       <div className="flex">
         {/* Sidebar */}

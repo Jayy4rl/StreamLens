@@ -7,6 +7,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { getActivity, getActivityChart } from "../services/api";
 import type { Activity, ChartDataPoint } from "../services/api";
+import AppHeader from "../components/AppHeader";
+import Alert from "../components/Alert";
+import { parseApiError, logError } from "../utils/errorHandling";
 
 const ActivityPage: React.FC = () => {
   const [timeRange, setTimeRange] = useState<"24H" | "7D" | "30D">("7D");
@@ -29,8 +32,9 @@ const ActivityPage: React.FC = () => {
       setActivities(activityData);
       setChartData(chartDataResult);
     } catch (err) {
-      console.error("Failed to fetch activity:", err);
-      setError("Failed to load activity data. Please ensure the API server is running.");
+      logError(err, "Activity.fetchData");
+      const errorDetails = parseApiError(err);
+      setError(errorDetails.message);
     } finally {
       setLoading(false);
     }
@@ -194,64 +198,22 @@ const ActivityPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-black text-white font-mono">
       {/* Header */}
-      <header className="border-b border-gray-800 bg-black sticky top-0 z-50">
-        <div className="px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <a
-              href="/"
-              className="text-2xl font-bold text-orange-400 hover:text-orange-300"
-            >
-              STREAMLENS
-            </a>
-            <nav className="hidden lg:flex gap-6 text-sm">
-              <a href="/" className="hover:text-orange-400 transition">
-                HOME
-              </a>
-              <a href="/activity" className="text-orange-400">
-                ACTIVITY
-              </a>
-              <a href="#" className="hover:text-orange-400 transition">
-                CREATE
-              </a>
-            </nav>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex bg-gray-900 rounded px-3 py-2 gap-2 items-center">
-              <svg
-                className="w-4 h-4 text-gray-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-              <input
-                type="text"
-                placeholder="Search schemas and publishers"
-                className="bg-transparent text-xs outline-none w-48 placeholder-gray-600"
-              />
-              <kbd className="text-xs text-gray-600">⌘ K</kbd>
-            </div>
-            <button className="bg-orange-400 text-black px-4 py-2 rounded font-bold text-sm hover:bg-orange-500 transition">
-              CONNECT WALLET
-            </button>
-          </div>
-        </div>
-      </header>
+      <AppHeader currentPage="activity" />
 
-      {/* Warning Banner */}
-      <div className="bg-red-950 border-b border-red-900 px-6 py-3 flex items-center gap-2 text-sm">
-        <div className="w-2 h-2 bg-red-400 rounded-full flex-shrink-0"></div>
-        <span>
-          You are not connected to Somnia. Switch Network in your wallet to
-          continue.
-        </span>
-      </div>
+      {/* Error Banner */}
+      {error && (
+        <div className="px-6 py-4">
+          <Alert
+            type="error"
+            message={error}
+            onClose={() => setError(null)}
+            action={{
+              label: "RETRY",
+              onClick: fetchData,
+            }}
+          />
+        </div>
+      )}
 
       <div className="flex">
         {/* Sidebar */}
