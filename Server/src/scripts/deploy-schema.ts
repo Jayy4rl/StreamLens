@@ -133,9 +133,10 @@ async function deploySchema() {
     console.log("  2. Monitor progress in Supabase dashboard");
     console.log("  3. Query data: SELECT * FROM indexed_schemas;\n");
   } catch (error) {
-    console.error("\n❌ Deployment failed:", error.message);
-    if (error.detail) {
-      console.error("   Details:", error.detail);
+    const err = error as Error & { detail?: string };
+    console.error("\n❌ Deployment failed:", err.message);
+    if (err.detail) {
+      console.error("   Details:", err.detail);
     }
     throw error;
   } finally {

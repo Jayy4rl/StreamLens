@@ -122,12 +122,51 @@ The **SchemaEnricher** fetches additional metadata using the Somnia SDK:
 
 Cross-references indexed schemas with SDK's `getAllSchemas()` to ensure completeness.
 
+### Phase 4: Real-Time Monitoring (Hybrid Mode)
+
+**StreamLens now operates in Hybrid Mode** combining two complementary systems:
+
+1. **Real-Time Polling** (every 2 seconds)
+   - Detects new schemas instantly
+   - Low latency: < 3 seconds from blockchain to database
+   - Uses HTTP polling (no WebSocket subscription needed)
+
+2. **Periodic Historical Scans** (every 10 minutes)
+   - Catches any events missed by real-time polling
+   - Ensures 100% completeness
+   - Self-healing: recovers from network issues automatically
+
+This dual approach provides:
+- ⚡ **Fast detection** - Real-time polling catches most events within seconds
+- ✅ **Guaranteed completeness** - Periodic scans ensure nothing is missed
+- 🛡️ **Resilience** - Continues working even during brief network issues
+- 🔄 **Self-healing** - Automatically recovers and fills gaps
+
+**Configuration:**
+```bash
+# Enable real-time monitoring with hybrid mode
+ENABLE_REALTIME=true
+
+# Periodic scan interval (default: 10 minutes)
+HISTORICAL_SCAN_INTERVAL_MS=600000
+```
+
+**Learn more:** [HYBRID_MODE.md](./HYBRID_MODE.md) | [Quick Start](./HYBRID_MODE_QUICKSTART.md)
+
 ### Data Storage
 
-Currently uses **JSON file storage** (`data/schemas.json`) for simplicity:
-- Easy to inspect and debug
-- Version control friendly
-- Can be migrated to SQLite/PostgreSQL later for scale
+Currently supports two storage backends:
+
+1. **JSON File Storage** (development)
+   - Easy to inspect and debug
+   - Version control friendly
+   - Single file: `data/schemas.json`
+
+2. **Supabase/PostgreSQL** (production)
+   - Scalable and performant
+   - Full-text search capabilities
+   - Real-time subscriptions
+   - Configured via `SUPABASE_*` environment variables
 
 ## 📊 Data Model
 
@@ -182,19 +221,24 @@ npm run index    # Alias for npm run dev
 
 ## 🗺️ Roadmap
 
-### ✅ Phase 1: Core Indexing (Current)
+### ✅ Phase 1: Core Indexing (Complete)
 - [x] Historical event scanning
 - [x] Schema enrichment via SDK
 - [x] JSON-based storage
 - [x] Progress tracking and resumability
 - [x] Rate limiting and retry logic
 
-### 🔄 Phase 2: Real-time Monitoring (Next)
-- [ ] WebSocket subscription to new events
-- [ ] Incremental updates
-- [ ] Usage statistics tracking
+### ✅ Phase 2: Real-Time Monitoring (Complete)
+- [x] HTTP polling for new events (every 2 seconds)
+- [x] WebSocket connection with auto-reconnection
+- [x] **Hybrid Mode**: Real-time + periodic historical scans
+- [x] Event-driven architecture with webhooks
+- [x] Auto-enrichment of newly discovered schemas
+- [x] Graceful shutdown and error handling
 
-### 🌐 Phase 3: Web Dashboard
+**See [HYBRID_MODE.md](./HYBRID_MODE.md) for details on the dual monitoring system**
+
+### 🌐 Phase 3: Web Dashboard (Next)
 - [ ] Frontend UI for browsing schemas
 - [ ] Search and filtering
 - [ ] Schema details pages

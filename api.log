@@ -1,0 +1,6 @@
+nohup: ignoring input
+npm error Missing script: "api"
+npm error
+npm error To see a list of scripts, run:
+npm error   npm run
+npm error A complete log of this run can be found in: /home/jayy4rl/.npm/_logs/2025-11-25T06_52_29_440Z-debug-0.log

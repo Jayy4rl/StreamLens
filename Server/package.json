@@ -8,6 +8,8 @@
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "index": "ts-node src/index.ts",
+    "api": "ts-node src/api/server.ts",
+    "api:dev": "ts-node src/api/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "test:db": "ts-node src/database/testConnection.ts",
     "diagnose": "ts-node src/diagnostics.ts",
@@ -24,8 +26,12 @@
   "dependencies": {
     "@somnia-chain/streams": "^0.11.0",
     "@supabase/supabase-js": "^2.84.0",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
     "@types/pg": "^8.15.6",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
+    "express": "^4.18.2",
     "pg": "^8.16.3",
     "viem": "^2.37.13"
   },
