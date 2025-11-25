@@ -111,3 +111,57 @@ export const getPublishers = async (params?: {
     throw error;
   }
 };
+
+/**
+ * Get recent activity
+ */
+export const getActivity = async (params?: {
+  limit?: number;
+  timeRange?: '24H' | '7D' | '30D' | 'ALL';
+}): Promise<Activity[]> => {
+  try {
+    const response = await api.get<ApiResponse<Activity[]>>(
+      API_ENDPOINTS.activity,
+      { params }
+    );
+    return response.data.data;
+  } catch (error) {
+    console.error('Failed to fetch activity:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get activity chart data
+ */
+export const getActivityChart = async (params?: {
+  timeRange?: '24H' | '7D' | '30D';
+}): Promise<ChartDataPoint[]> => {
+  try {
+    const response = await api.get<ApiResponse<ChartDataPoint[]>>(
+      API_ENDPOINTS.activityChart,
+      { params }
+    );
+    return response.data.data;
+  } catch (error) {
+    console.error('Failed to fetch activity chart:', error);
+    throw error;
+  }
+};
+
+// Types for activity
+export interface Activity {
+  id: string;
+  type: 'REGISTER' | 'UPDATE' | 'USE';
+  schemaName: string;
+  schemaId: string;
+  publisher: string;
+  blockNumber: string;
+  timestamp: number;
+  transactionHash: string;
+}
+
+export interface ChartDataPoint {
+  timestamp: number;
+  count: number;
+}

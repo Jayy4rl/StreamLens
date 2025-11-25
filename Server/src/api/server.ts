@@ -271,6 +271,171 @@ app.get("/api/publishers", async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/activity
+ * Get recent schema registration activity
+ *
+ * Query params:
+ * - limit: number (default: 15, max: 100)
+ * - timeRange: string ('24H', '7D', '30D', 'ALL' - default: '30D')
+ */
+app.get("/api/activity", async (req: Request, res: Response) => {
+  try {
+    const supabase = getSupabaseClient();
+    const { limit = 15, timeRange = "30D" } = req.query;
+
+    const limitNum = Math.min(parseInt(limit as string) || 15, 100);
+
+    // Calculate time threshold based on range
+    let timeThreshold = 0;
+    const now = Math.floor(Date.now() / 1000);
+
+    switch (timeRange) {
+      case "24H":
+        timeThreshold = now - 24 * 60 * 60;
+        break;
+      case "7D":
+        timeThreshold = now - 7 * 24 * 60 * 60;
+        break;
+      case "30D":
+        timeThreshold = now - 30 * 24 * 60 * 60;
+        break;
+      case "ALL":
+      default:
+        timeThreshold = 0;
+        break;
+    }
+
+    let query = supabase
+      .from("indexed_schemas")
+      .select("*")
+      .order("timestamp", { ascending: false });
+
+    // Apply time filter if not ALL
+    if (timeThreshold > 0) {
+      query = query.gte("timestamp", timeThreshold);
+    }
+
+    query = query.limit(limitNum);
+
+    const { data, error } = await query;
+
+    if (error) {
+      logger.error("Error fetching activity:", error);
+      return res.status(500).json({
+        error: "Failed to fetch activity",
+        message: error.message,
+      });
+    }
+
+    // Transform to activity format
+    const activities =
+      data?.map((schema: any) => ({
+        id: schema.schema_id,
+        type: "REGISTER",
+        schemaName: schema.schema_name || "Unnamed Schema",
+        schemaId: schema.schema_id,
+        publisher: schema.publisher_address,
+        blockNumber: schema.block_number?.toString() || "0",
+        timestamp: schema.timestamp,
+        transactionHash: schema.transaction_hash,
+      })) || [];
+
+    res.json({
+      success: true,
+      count: activities.length,
+      data: activities,
+    });
+  } catch (error) {
+    logger.error("Unexpected error in GET /api/activity:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * GET /api/activity/chart
+ * Get activity chart data for visualization
+ *
+ * Query params:
+ * - timeRange: string ('24H', '7D', '30D' - default: '7D')
+ */
+app.get("/api/activity/chart", async (req: Request, res: Response) => {
+  try {
+    const supabase = getSupabaseClient();
+    const { timeRange = "7D" } = req.query;
+
+    // Calculate time threshold and interval
+    const now = Math.floor(Date.now() / 1000);
+    let timeThreshold = 0;
+    let intervalSeconds = 3600; // 1 hour default
+
+    switch (timeRange) {
+      case "24H":
+        timeThreshold = now - 24 * 60 * 60;
+        intervalSeconds = 3600; // 1 hour intervals
+        break;
+      case "7D":
+        timeThreshold = now - 7 * 24 * 60 * 60;
+        intervalSeconds = 6 * 3600; // 6 hour intervals
+        break;
+      case "30D":
+        timeThreshold = now - 30 * 24 * 60 * 60;
+        intervalSeconds = 24 * 3600; // 1 day intervals
+        break;
+      default:
+        timeThreshold = now - 7 * 24 * 60 * 60;
+        intervalSeconds = 6 * 3600;
+    }
+
+    const { data, error } = await supabase
+      .from("indexed_schemas")
+      .select("timestamp")
+      .gte("timestamp", timeThreshold)
+      .order("timestamp", { ascending: true });
+
+    if (error) {
+      logger.error("Error fetching chart data:", error);
+      return res.status(500).json({
+        error: "Failed to fetch chart data",
+        message: error.message,
+      });
+    }
+
+    // Group data by time intervals
+    const chartData: { timestamp: number; count: number }[] = [];
+    const buckets = new Map<number, number>();
+
+    data?.forEach((schema: any) => {
+      const bucketTime =
+        Math.floor(schema.timestamp / intervalSeconds) * intervalSeconds;
+      buckets.set(bucketTime, (buckets.get(bucketTime) || 0) + 1);
+    });
+
+    // Convert to array and sort
+    buckets.forEach((count, timestamp) => {
+      chartData.push({ timestamp, count });
+    });
+
+    chartData.sort((a, b) => a.timestamp - b.timestamp);
+
+    res.json({
+      success: true,
+      data: chartData,
+      timeRange,
+      intervalSeconds,
+    });
+  } catch (error) {
+    logger.error("Unexpected error in GET /api/activity/chart:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
  * Transform database schema to IndexedSchema type
  * Converts BigInt to string for JSON serialization
  */
@@ -325,6 +490,8 @@ export function startServer() {
     logger.info("  GET /api/schemas/:id");
     logger.info("  GET /api/stats");
     logger.info("  GET /api/publishers");
+    logger.info("  GET /api/activity");
+    logger.info("  GET /api/activity/chart");
   });
 
   // Graceful shutdown

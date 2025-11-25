@@ -14,4 +14,6 @@ export const API_ENDPOINTS = {
   schemaById: (id: string) => `${API_BASE_URL}/api/schemas/${id}`,
   stats: `${API_BASE_URL}/api/stats`,
   publishers: `${API_BASE_URL}/api/publishers`,
+  activity: `${API_BASE_URL}/api/activity`,
+  activityChart: `${API_BASE_URL}/api/activity/chart`,
 } as const;
