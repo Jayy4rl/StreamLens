@@ -51,7 +51,7 @@ export interface RealtimeConfig {
 export class RealtimeMonitor {
   private config: RealtimeConfig;
   private repository: ISchemaRepository;
-  private wsClient: ReturnType<typeof createPublicClient> | null = null;
+  private wsClient: any = null;
   private unwatch: WatchContractEventReturnType | null = null;
   private isRunning: boolean = false;
   private reconnectAttempts: number = 0;
@@ -273,9 +273,9 @@ export class RealtimeMonitor {
       schemaId,
       schemaName: "", // Will be enriched later
       schemaDefinition: "", // Will be enriched later
-      publisherAddress: transaction.from,
+      publisherAddress: (transaction as any).from,
       blockNumber: log.blockNumber!,
-      timestamp: Number(block.timestamp),
+      timestamp: Number((block as any).timestamp),
       transactionHash: log.transactionHash!,
       isPublic: true,
     };

@@ -47,15 +47,15 @@ class StreamLensIndexer {
       }),
     });
 
-    // Initialize scanner and enricher
+    // Initialize scanner and enricher (cast to bypass viem type strictness)
     this.scanner = new HistoricalScanner(
-      publicClient,
+      publicClient as any,
       this.repository,
       this.config.contractAddress,
       this.config.batchSize
     );
 
-    this.enricher = new SchemaEnricher(publicClient, this.repository);
+    this.enricher = new SchemaEnricher(publicClient as any, this.repository);
   }
 
   /**
