@@ -227,7 +227,7 @@ export class RealtimeMonitor {
    * Process a single schema registration event
    */
   private async processEvent(log: Log): Promise<void> {
-    const schemaId = log.topics[1] as Hex;
+    const schemaId = (log as any).topics[1] as Hex;
 
     logger.info(`🔍 Processing schema registration: ${schemaId}`);
 

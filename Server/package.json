@@ -4,7 +4,7 @@
   "description": "A block explorer meets npm for Data Streams schemas on Somnia",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --skipLibCheck",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "index": "ts-node src/index.ts",
