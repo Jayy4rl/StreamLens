@@ -451,9 +451,8 @@ function transformDbSchemaToIndexedSchema(dbSchema: any): any {
     parentSchemaId: dbSchema.parent_schema_id || undefined,
     isPublic: dbSchema.is_public ?? true,
     metadata: {
-      usageCount: dbSchema.metadata?.usage_count || 0,
-      lastUsedBlock:
-        dbSchema.metadata?.last_used_block?.toString() || undefined,
+      usageCount: dbSchema.metadata?.usageCount || 0,
+      lastUsedBlock: dbSchema.metadata?.lastUsedBlock?.toString() || undefined,
       description: dbSchema.metadata?.description,
       tags: dbSchema.metadata?.tags || [],
       versions: dbSchema.metadata?.versions || [],
