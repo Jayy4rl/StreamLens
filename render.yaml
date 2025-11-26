@@ -1,0 +1,57 @@
+services:
+  # API Web Service
+  - type: web
+    name: streamlens-api
+    runtime: node
+    region: oregon
+    plan: starter
+    rootDir: StreamLens/Server
+    buildCommand: npm install && npm run build
+    startCommand: npm run api
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_PORT
+        value: 3001
+      - key: PORT
+        value: 3001
+      - key: NETWORK
+        sync: false
+      - key: RPC_URL
+        sync: false
+      - key: START_BLOCK
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+    healthCheckPath: /api/health
+
+  # Background Worker - Indexer (Historical Scan + Realtime Monitor)
+  - type: worker
+    name: streamlens-indexer
+    runtime: node
+    region: oregon
+    plan: starter
+    rootDir: StreamLens/Server
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NETWORK
+        sync: false
+      - key: RPC_URL
+        sync: false
+      - key: START_BLOCK
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: ENABLE_REALTIME
+        value: true
+      - key: HISTORICAL_SCAN_INTERVAL_MS
+        value: 300000
+      - key: BATCH_SIZE
+        value: 1000
