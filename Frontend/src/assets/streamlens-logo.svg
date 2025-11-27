@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 64 64">
+  <defs>
+    <!-- Main gradient for lens -->
+    <linearGradient id="lensGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF8C00"/>
+      <stop offset="50%" stop-color="#FF6B35"/>
+      <stop offset="100%" stop-color="#F94449"/>
+    </linearGradient>
+    <!-- Gradient for data streams -->
+    <linearGradient id="streamGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FF8C00"/>
+      <stop offset="100%" stop-color="#FFB366"/>
+    </linearGradient>
+    <!-- Glow effect -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Outer lens ring -->
+  <circle cx="32" cy="32" r="26" fill="none" stroke="url(#lensGradient)" stroke-width="4" opacity="0.9"/>
+  
+  <!-- Inner lens glass effect -->
+  <circle cx="32" cy="32" r="18" fill="none" stroke="url(#lensGradient)" stroke-width="2" opacity="0.6"/>
+  
+  <!-- Center focal point -->
+  <circle cx="32" cy="32" r="6" fill="url(#lensGradient)" filter="url(#glow)"/>
+  
+  <!-- Data stream lines flowing through the lens -->
+  <!-- Stream 1 - top left to center -->
+  <path d="M8 20 Q20 24 26 32" fill="none" stroke="url(#streamGradient)" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>
+  
+  <!-- Stream 2 - left to center -->
+  <path d="M4 32 Q16 32 26 32" fill="none" stroke="url(#streamGradient)" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+  
+  <!-- Stream 3 - bottom left to center -->
+  <path d="M8 44 Q20 40 26 32" fill="none" stroke="url(#streamGradient)" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>
+  
+  <!-- Stream 4 - center to top right (continuing flow) -->
+  <path d="M38 32 Q48 24 56 20" fill="none" stroke="url(#streamGradient)" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>
+  
+  <!-- Stream 5 - center to right -->
+  <path d="M38 32 Q48 32 60 32" fill="none" stroke="url(#streamGradient)" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+  
+  <!-- Stream 6 - center to bottom right -->
+  <path d="M38 32 Q48 40 56 44" fill="none" stroke="url(#streamGradient)" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>
+  
+  <!-- Data particles/dots representing data points -->
+  <circle cx="12" cy="22" r="1.5" fill="#FF8C00" opacity="0.8"/>
+  <circle cx="6" cy="32" r="1.5" fill="#FF8C00" opacity="0.8"/>
+  <circle cx="12" cy="42" r="1.5" fill="#FF8C00" opacity="0.8"/>
+  <circle cx="52" cy="22" r="1.5" fill="#FFB366" opacity="0.8"/>
+  <circle cx="58" cy="32" r="1.5" fill="#FFB366" opacity="0.8"/>
+  <circle cx="52" cy="42" r="1.5" fill="#FFB366" opacity="0.8"/>
+  
+  <!-- Microscope handle at bottom -->
+  <rect x="29" y="54" width="6" height="8" rx="2" fill="url(#lensGradient)" opacity="0.8"/>
+</svg>
