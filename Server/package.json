@@ -6,10 +6,11 @@
   "scripts": {
     "build": "tsc --skipLibCheck",
     "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
     "index": "ts-node src/index.ts",
     "api": "ts-node src/api/server.ts",
     "api:dev": "ts-node src/api/server.ts",
+    "dev": "ts-node src/combined.ts",
+    "dev:prod": "node dist/combined.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "test:db": "ts-node src/database/testConnection.ts",
     "diagnose": "ts-node src/diagnostics.ts",
