@@ -17,7 +17,8 @@ config();
 
 const logger = createLogger("API-Server");
 const app = express();
-const PORT = process.env.API_PORT || 3001;
+// Use PORT first (for cloud platforms like Railway, Render, Fly.io), then API_PORT, then fallback to 3001
+const PORT = process.env.PORT || process.env.API_PORT || 3001;
 
 // Middleware
 app.use(cors());
